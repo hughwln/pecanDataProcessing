@@ -1,3 +1,10 @@
+'''
+Function:
+    1.check the content of output files
+author: Yi Hu(yhu28@ncsu.edu)
+date: Sept. 2021
+'''
+
 import pandas as pd
 import pickle
 import os

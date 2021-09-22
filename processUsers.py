@@ -1,7 +1,14 @@
+'''
+Function:
+    1.sort by timestamp, fill missing data with NaN
+    2.merge different kinds of data into one file for each user
+author: Yi Hu(yhu28@ncsu.edu)
+date: Sept. 2021
+'''
+
 import csv
 import os
 from os import walk
-import pandas as pd
 import pandas as pd
 import numpy as np
 import pickle

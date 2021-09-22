@@ -1,3 +1,10 @@
+'''
+Function:
+    1.split different kinds of data into different users, one user one file
+author: Yi Hu(yhu28@ncsu.edu)
+date: Sept. 2021
+'''
+
 import csv
 import pandas as pd
 import numpy as np
