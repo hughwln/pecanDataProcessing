@@ -223,6 +223,72 @@ def deleteinvalidusers():
     out_f = 'C:\\Users\\yhu28\\Downloads\\outputPecanData\\PecanStreet_Reconstructed\\users_list_valid.csv'
     users.to_csv(out_f, index=False)
 
+def get_yearly_1min_data():
+    filepath = 'C:\\Users\\yhu28\\Downloads\\outputPecanData\\PecanStreet_Separately\\1min_csv\\'
+
+    X = {
+        '2012': pd.DataFrame(),
+        '2013': pd.DataFrame(),
+        '2014': pd.DataFrame(),
+        '2015': pd.DataFrame(),
+        '2016': pd.DataFrame(),
+        '2017': pd.DataFrame(),
+        '2018': pd.DataFrame(),
+        '2019': pd.DataFrame(),
+        '2020': pd.DataFrame(),
+        '2021': pd.DataFrame()
+    }
+
+    for (dirpath, dirnames, filenames) in walk(filepath):
+        # f.extend(dirpath + dirnames + filenames)
+        for file in filenames:
+            fullname = os.path.join(dirpath, file)
+
+            temp_read = pd.read_csv(fullname, header=0, iterator=True, index_col='Time')
+            temp = temp_read.get_chunk(10)
+            col = ''
+            if 'use' in temp.columns:
+                col = 'use'
+            elif 'grid' in temp.columns:
+                if 'gen' in temp.columns:
+                    continue
+                else:
+                    col = 'grid'
+            else:
+                continue
+
+            df = pd.DataFrame()
+            # print(df)
+            reader = pd.read_csv(fullname, header=0, iterator=True, index_col='Time')
+            chunk_size = 500000
+            loop = True
+            while loop:
+                try:
+                    data = reader.get_chunk(chunk_size)
+                    load = data[col]
+                    load.index = [i[:-6] for i in load.index]
+                    # load.index = pd.to_datetime(load.index)
+                    df = pd.concat([df, load])
+                    # print(df)
+
+                except StopIteration:
+                    loop = False
+
+            df.columns = [file[:-4]]
+            years = ['2012', '20123', '2014', '2015', '2016', '2017', '2018', '2019', '2020', '2021']
+            for year in years:
+                df_year = df[[i[0:4] == year for i in df.index]]
+                df_year = df_year.sort_index()
+                print(year, df_year)
+                if len(df_year.index) != 0:
+                    X[year] = pd.concat([X[year], df_year], axis=1)
+
+            print(X)
+            # df.index = pd.to_datetime(df.index)
+            # year = df.index.year.drop_duplicates()
+            # print(year)
+
+
 # check_userlist()
 # toCSV()
-deleteinvalidusers()
+get_yearly_1min_data()
