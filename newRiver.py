@@ -71,7 +71,7 @@ class newRiverLoader():
         trainDataFile = 'C:\\Users\\yhu28\\Documents\\Code\\Research\\LoadGeneration\\dataset\\newRiver\\GANData.csv'
         dataset.to_csv(trainDataFile)
 
-    def nnDataset(self, day_offset=0, shuffle=False):
+    def nnDataset(self, day_offset=0, shuffle='origin'):
         time = {0: ['2017-7-24', '2019-12-29', '2019-12-30', '2020-12-20'],
                 1: ['2017-7-25', '2019-12-30', '2019-12-31', '2020-12-21'],
                 2: ['2017-7-26', '2019-12-31', '2020-1-1', '2020-12-22'],
@@ -82,12 +82,14 @@ class newRiverLoader():
         # training set
         dfs_training = [df.loc[time[day_offset][0]: time[day_offset][1]] for df in self.dfs]
         for i in range(len(dfs_training)):
-            # shuffle columns
-            if shuffle:
+            # ============shuffle columns============
+            if shuffle == 'random':
                 dfs_training[i] = dfs_training[i].sample(n=8, axis='columns')
-            else:
+                dfs_training[i].columns = range(8)
+            elif shuffle == 'sort':
                 dfs_training[i] = dfs_training[i].loc[:, dfs_training[i].mean().sort_values(ascending=True).index]
-            dfs_training[i].columns = range(8)
+                dfs_training[i].columns = range(8)
+            # ============================================
             dfs_training[i]['label'] = pd.Series(1, index=dfs_training[i].index)
 
         # negative samples
@@ -95,12 +97,14 @@ class newRiverLoader():
             fake_group = pd.DataFrame(columns=range(8))
             for c in range(8):
                 fake_group[c] = dfs_training[c].iloc[:, (i+c) % 8]
-            # shuffle columns
-            if shuffle:
+            # ==========shuffle columns=================
+            if shuffle == 'random':
                 fake_group = fake_group.sample(n=8, axis='columns')
-            else:
+                fake_group.columns = range(8)
+            elif shuffle == 'sort':
                 fake_group = fake_group.loc[:, fake_group.mean().sort_values(ascending=True).index]
-            fake_group.columns = range(8)
+                fake_group.columns = range(8)
+            # ============================================
             fake_group['label'] = pd.Series(0, index=fake_group.index)
             dfs_training.append(fake_group)
         training_set = pd.concat(dfs_training)
@@ -108,36 +112,48 @@ class newRiverLoader():
         # testing set
         dfs_testing = [df.loc[time[day_offset][2]: time[day_offset][3]] for df in self.dfs]
         for i in range(len(dfs_testing)):
-            # shuffle columns
-            if shuffle:
+            # ==============shuffle columns==============
+            if shuffle == 'random':
                 dfs_testing[i] = dfs_testing[i].sample(n=8, axis='columns')
-            else:
+                dfs_testing[i].columns = range(8)
+            elif shuffle == 'sort':
                 dfs_testing[i] = dfs_testing[i].loc[:, dfs_testing[i].mean().sort_values(ascending=True).index]
-            dfs_testing[i].columns = range(8)
+                dfs_testing[i].columns = range(8)
+            # ============================================
             dfs_testing[i]['label'] = pd.Series(1, index=dfs_testing[i].index)
         # negative samples
         for i in range(8):
             fake_group = pd.DataFrame(columns=range(8))
             for c in range(8):
                 fake_group[c] = dfs_testing[c].iloc[:, (i+c) % 8]
-            # shuffle columns
-            if shuffle:
+            # ============= shuffle columns ==============
+            if shuffle == 'random':
                 fake_group = fake_group.sample(n=8, axis='columns')
-            else:
+                fake_group.columns = range(8)
+            elif shuffle == 'sort':
                 fake_group = fake_group.loc[:, fake_group.mean().sort_values(ascending=True).index]
-            fake_group.columns = range(8)
+                fake_group.columns = range(8)
+            # ============================================
             fake_group['label'] = pd.Series(0, index=fake_group.index)
             dfs_testing.append(fake_group)
         testing_set = pd.concat(dfs_testing)
 
-        if shuffle:
+        if shuffle == 'random':
             trainDataFile = 'C:\\Users\\yhu28\\Documents\\Code\\Research\\LoadGeneration\\dataset\\newRiver\\classiferTrain'+str(day_offset)+'.csv'
             testDataFile = 'C:\\Users\\yhu28\\Documents\\Code\\Research\\LoadGeneration\\dataset\\newRiver\\classiferTest'+str(day_offset)+'.csv'
-        else:
+        elif shuffle == 'sort':
             trainDataFile = 'C:\\Users\\yhu28\\Documents\\Code\\Research\\LoadGeneration\\dataset\\newRiver\\classiferTrainSorted' + str(
                 day_offset) + '.csv'
             testDataFile = 'C:\\Users\\yhu28\\Documents\\Code\\Research\\LoadGeneration\\dataset\\newRiver\\classiferTestSorted' + str(
                 day_offset) + '.csv'
+        elif shuffle == 'origin':
+            trainDataFile = 'C:\\Users\\yhu28\\Documents\\Code\\Research\\LoadGeneration\\dataset\\newRiver\\classiferTrainOrigin' + str(
+                day_offset) + '.csv'
+            testDataFile = 'C:\\Users\\yhu28\\Documents\\Code\\Research\\LoadGeneration\\dataset\\newRiver\\classiferTestOrigin' + str(
+                day_offset) + '.csv'
+        else:
+            print('!!! unknown shuffle !!!')
+
         training_set.to_csv(trainDataFile)
         testing_set.to_csv(testDataFile)
 
@@ -145,5 +161,5 @@ if __name__ == '__main__':
     dataloader = newRiverLoader()
     dataloader.load_data()
     for i in range(7):
-        dataloader.nnDataset(i)
+        dataloader.nnDataset(i, shuffle='origin')
     # dataloader.groupDataset()
