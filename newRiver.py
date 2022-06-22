@@ -3,6 +3,8 @@ import pickle
 import os
 from os import walk
 import numpy as np
+import random
+import matplotlib.pyplot as plt
 
 class newRiverLoader():
 
@@ -73,23 +75,172 @@ class newRiverLoader():
                 4: ['2017-7-28', '2020-1-2', '2020-1-3', '2020-12-24'],
                 5: ['2017-7-29', '2020-1-3', '2020-1-4', '2020-12-25'],
                 6: ['2017-7-30', '2020-1-4', '2020-1-5', '2020-12-26']}
-        # training set
-        dfs_training = [df.loc[time[day_offset][0]: time[day_offset][3]] for df in self.dfs]
+        if day_offset == 7:
+            datas = []
+            for day in range(7):
+                # training set
+                dfs_training = [df.loc[time[day][0]: time[day][3]] for df in self.dfs]
 
-        t_path = 'C:\\Users\\yhu28\\Documents\\Code\\Data\\new_river\\'
-        t_file = t_path + 'temp_Boone.csv'
-        d = pd.read_csv(t_file)
-        d.index = pd.to_datetime(d["Date"])
-        d = d.loc[time[day_offset][0]: time[day_offset][3]]
+                t_path = 'C:\\Users\\yhu28\\Documents\\Code\\Data\\new_river\\'
+                t_file = t_path + 'temp_Boone.csv'
+                d = pd.read_csv(t_file)
+                d.index = pd.to_datetime(d["Date"])
+                d = d.loc[time[day][0]: time[day][3]]
 
-        for i in range(len(dfs_training)):
-            dfs_training[i] = dfs_training[i].loc[:, dfs_training[i].mean().sort_values(ascending=True).index]
-            dfs_training[i]['Temp'] = d['Temp'].astype(np.float32)
+                for i in range(len(dfs_training)):
+                    dfs_training[i] = dfs_training[i].loc[:, dfs_training[i].mean().sort_values(ascending=True).index]
+                    dfs_training[i]['Temp'] = d['Temp'].astype(np.float32)
 
-        dataset = pd.concat(dfs_training)
+                data = pd.concat(dfs_training)
+                datas.append(data)
+            dataset = pd.concat(datas)
 
-        trainDataFile = 'C:\\Users\\yhu28\\Documents\\Code\\Research\\LoadGeneration\\dataset\\newRiver\\GANData.csv'
+        else:
+            # training set
+            dfs_training = [df.loc[time[day_offset][0]: time[day_offset][3]] for df in self.dfs]
+
+            t_path = 'C:\\Users\\yhu28\\Documents\\Code\\Data\\new_river\\'
+            t_file = t_path + 'temp_Boone.csv'
+            d = pd.read_csv(t_file)
+            d.index = pd.to_datetime(d["Date"])
+            d = d.loc[time[day_offset][0]: time[day_offset][1]]
+
+            for i in range(len(dfs_training)):
+                dfs_training[i] = dfs_training[i].loc[:, dfs_training[i].mean().sort_values(ascending=True).index]
+                dfs_training[i]['Temp'] = d['Temp'].astype(np.float32)
+
+            dataset = pd.concat(dfs_training)
+
+        trainDataFile = 'C:\\Users\\yhu28\\Documents\\Code\\Research\\LoadGeneration\\dataset\\newRiver\\GANData' + str(day_offset) + '.csv'
         dataset.to_csv(trainDataFile)
+
+    def buildNegativeSamples_bymean(self, dfs_training, week_set, num):
+        classified_by_mean = [pd.DataFrame(),
+                             pd.DataFrame(),
+                             pd.DataFrame(),
+                             pd.DataFrame(),
+                             pd.DataFrame(),
+                             pd.DataFrame()]
+
+        week_mean = week_set.mean()
+        upper = week_mean.max()
+        # print(week_mean.max(), week_mean.min())
+
+        # fig = plt.figure()
+        # plt.hist(week_mean, bins=6)
+        # plt.title('Positive sample mean distribution')
+        # plt.show()
+
+        for i in range(len(week_mean)):
+            if week_mean.iloc[i] < upper / 6.0:
+                classified_by_mean[0][len(classified_by_mean[0].columns)] = week_set.iloc[:, i]
+            elif week_mean.iloc[i] < upper * 2.0 / 6.0:
+                classified_by_mean[1][len(classified_by_mean[1].columns)] = week_set.iloc[:, i]
+            elif week_mean.iloc[i] < upper * 3.0 / 6.0:
+                classified_by_mean[2][len(classified_by_mean[2].columns)] = week_set.iloc[:, i]
+            elif week_mean.iloc[i] < upper * 4.0 / 6.0:
+                classified_by_mean[3][len(classified_by_mean[3].columns)] = week_set.iloc[:, i]
+            elif week_mean.iloc[i] < upper * 5.0 / 6.0:
+                classified_by_mean[4][len(classified_by_mean[4].columns)] = week_set.iloc[:, i]
+            else:
+                classified_by_mean[5][len(classified_by_mean[5].columns)] = week_set.iloc[:, i]
+
+        # print(classified_by_mean)
+        classified_by_mean_num = [len(df.columns) for df in classified_by_mean]
+        max_num = max(classified_by_mean_num)
+        max_idx = classified_by_mean_num.index(max_num)
+        classified_by_mean_1 = classified_by_mean[max_idx]
+        aaa = [classified_by_mean[i] for i in range(len(classified_by_mean)) if i!=max_idx]
+        classified_by_mean_2 = pd.concat(aaa, axis=1)
+
+        # temp = []
+        for i in range(num):
+            a = random.randint(0, 4)
+            b = 8 - a
+            curves = [classified_by_mean_1.sample(n=a, axis='columns'), classified_by_mean_2.sample(n=b, axis='columns')]
+            group = pd.concat(curves, axis=1)
+            group.columns = range(8)
+            # if len(group.columns) != 8:
+            #     print(len(group.columns))
+            group = group.loc[:, group.mean().sort_values(ascending=True).index]
+            if len(group.columns) == 8:
+                group.columns = range(8)
+            else:
+                print("error!!! not 8 columns")
+            group['label'] = pd.Series(0, index=group.index)
+            dfs_training.append(group)
+
+        # temp = pd.concat(temp, axis=1)
+        # temp = temp.max()
+        # fig = plt.figure()
+        # plt.hist(temp, bins=6)
+        # plt.title('Negative sample mean distribution')
+        # plt.show()
+
+    def buildNegativeSamples_bypeak(self, dfs_training, week_set, num):
+        classified_by_peak = [pd.DataFrame(),
+                             pd.DataFrame(),
+                             pd.DataFrame(),
+                             pd.DataFrame(),
+                             pd.DataFrame(),
+                             pd.DataFrame()]
+
+        week_peak = week_set.max()
+
+        upper = week_peak.max()
+        # print(week_mean.max(), week_mean.min())
+
+        # fig = plt.figure()
+        # plt.hist(week_peak, bins=6)
+        # plt.title('Positive sample mean distribution')
+        # plt.show()
+
+        for i in range(len(week_peak)):
+            if week_peak.iloc[i] < upper / 6.0:
+                classified_by_peak[0][len(classified_by_peak[0].columns)] = week_set.iloc[:, i]
+            elif week_peak.iloc[i] < upper * 2.0 / 6.0:
+                classified_by_peak[0][len(classified_by_peak[0].columns)] = week_set.iloc[:, i]
+            elif week_peak.iloc[i] < upper * 3.0 / 6.0:
+                classified_by_peak[0][len(classified_by_peak[0].columns)] = week_set.iloc[:, i]
+            elif week_peak.iloc[i] < upper * 4.0 / 6.0:
+                classified_by_peak[1][len(classified_by_peak[1].columns)] = week_set.iloc[:, i]
+            elif week_peak.iloc[i] < upper * 5.0 / 6.0:
+                classified_by_peak[1][len(classified_by_peak[1].columns)] = week_set.iloc[:, i]
+            else:
+                classified_by_peak[1][len(classified_by_peak[1].columns)] = week_set.iloc[:, i]
+
+        # print(classified_by_mean)
+        classified_by_peak_num = [len(df.columns) for df in classified_by_peak]
+        max_num = max(classified_by_peak_num)
+        max_idx = classified_by_peak_num.index(max_num)
+        classified_by_peak_1 = classified_by_peak[max_idx]
+        aaa = [classified_by_peak[i] for i in range(len(classified_by_peak)) if i!=max_idx]
+        classified_by_peak_2 = pd.concat(aaa, axis=1)
+
+        # temp = []
+        for i in range(num):
+            a = random.randint(0, 5)
+            b = 8 - a
+            curves = [classified_by_peak_1.sample(n=a, axis='columns'), classified_by_peak_2.sample(n=b, axis='columns')]
+            group = pd.concat(curves, axis=1)
+            group.columns = range(8)
+            # if len(group.columns) != 8:
+            #     print(len(group.columns))
+            group = group.loc[:, group.mean().sort_values(ascending=True).index]
+            if len(group.columns) == 8:
+                group.columns = range(8)
+            else:
+                print("error!!! not 8 columns")
+            group['label'] = pd.Series(0, index=group.index)
+            dfs_training.append(group)
+
+        # temp = pd.concat(temp, axis=1)
+        # temp = temp.max()
+        # fig = plt.figure()
+        # plt.hist(temp, bins=6)
+        # plt.title('Negative sample mean distribution')
+        # plt.show()
+
 
     def nnDataset(self, day_offset=0, shuffle='origin'):
         time = {0: ['2017-7-24', '2019-12-29', '2019-12-30', '2020-12-20'],
@@ -99,6 +250,9 @@ class newRiverLoader():
                 4: ['2017-7-28', '2020-1-2', '2020-1-3', '2020-12-24'],
                 5: ['2017-7-29', '2020-1-3', '2020-1-4', '2020-12-25'],
                 6: ['2017-7-30', '2020-1-4', '2020-1-5', '2020-12-26']}
+
+        dfs_week = []
+
         # training set
         dfs_training = [df.loc[time[day_offset][0]: time[day_offset][3]] for df in self.dfs]
         for i in range(len(dfs_training)):
@@ -112,21 +266,35 @@ class newRiverLoader():
             # ============================================
             dfs_training[i]['label'] = pd.Series(1, index=dfs_training[i].index)
 
-        # negative samples
-        for i in range(8):
-            fake_group = pd.DataFrame(columns=range(8))
-            for c in range(8):
-                fake_group[c] = dfs_training[c].iloc[:, (i+c) % 8]
-            # ==========shuffle columns=================
-            if shuffle == 'random':
-                fake_group = fake_group.sample(n=8, axis='columns')
-                fake_group.columns = range(8)
-            elif shuffle == 'sort':
-                fake_group = fake_group.loc[:, fake_group.mean().sort_values(ascending=True).index]
-                fake_group.columns = range(8)
-            # ============================================
-            fake_group['label'] = pd.Series(0, index=fake_group.index)
-            dfs_training.append(fake_group)
+            for n in range(len(dfs_training[i].index) // 672):
+                week = dfs_training[i].iloc[n*672:n*672+672, :-1]
+                week.index = range(len(week.index))
+                dfs_week.append(week)
+        week_set = pd.concat(dfs_week, axis=1)
+
+        self.buildNegativeSamples_bymean(dfs_training, week_set, int(len(dfs_training[0].index) / 672 * 8 * 1))
+        self.buildNegativeSamples_bypeak(dfs_training, week_set, int(len(dfs_training[0].index)/672 * 8 * 2))
+
+        # unsupervised samples
+        # for i in range(8*3):
+        #     fake_group = pd.DataFrame(columns=range(8))
+        #     randomlist = random.sample(range(0, 64), 8)
+        #     print(randomlist)
+        #     for c in range(8):
+        #         # fake_group[c] = dfs_training[c].iloc[:, (i+c) % 8]
+        #         fake_group[c] = dfs_training[randomlist[c] // 8].iloc[:, randomlist[c] % 8]
+        #     # ==========shuffle columns=================
+        #     if shuffle == 'random':
+        #         fake_group = fake_group.sample(n=8, axis='columns')
+        #         fake_group.columns = range(8)
+        #     elif shuffle == 'sort':
+        #         fake_group = fake_group.loc[:, fake_group.mean().sort_values(ascending=True).index]
+        #         fake_group.columns = range(8)
+        #     # ============================================
+        #     fake_group['label'] = pd.Series(0, index=fake_group.index)
+        #     dfs_training.append(fake_group)
+
+
         training_set = pd.concat(dfs_training)
 
         if shuffle == 'random':
@@ -146,6 +314,7 @@ class newRiverLoader():
 if __name__ == '__main__':
     dataloader = newRiverLoader()
     dataloader.load_data()
-    # for i in range(7):
-    #     dataloader.nnDataset(i, shuffle='origin')
-    dataloader.groupDataset()
+    # dataloader.nnDataset(0, shuffle='sort')
+    for i in range(7):
+        dataloader.nnDataset(i, shuffle='sort')
+    # dataloader.groupDataset(day_offset=0)
